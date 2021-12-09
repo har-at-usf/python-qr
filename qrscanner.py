@@ -67,6 +67,11 @@ class ZbarWebcam(WebcamCapture):
 
     # The capture device is represented as an index: 0, ..., <num devices>.
     capture_device: int
+    stream: any  # TODO: Document what the stream returns....
+    
+    def start_webcam(self):
+        """Start the webcam stream."""
+        self.stream = VideoCapture(self.capture_device)
 
     def set_capture_device(self, capture_device: int):
         """Sets the integer representation of the capture device. In most
@@ -76,13 +81,12 @@ class ZbarWebcam(WebcamCapture):
     def capture_data(self):
         """Runs until data is captured (or forever if no data captured)."""
 
-        stream = VideoCapture(self.capture_device)
         obj = []
 
         # Runs until at least one object (data) is in the list of objects.
         while not len(obj):
 
-            _, frame = stream.read()
+            _, frame = self.stream.read()
 
             obj = [o.data.decode("utf-8") for o in pyzbar.decode(frame)]
 
@@ -114,15 +118,10 @@ class WindowsQrScanner(ZbarWebcam, WindowsClipboard):
         self.set_capture_device(capture_device)
         super().__init__(filepath)
 
-        self.capture_data()
-
-        # If data was captured, set it to the clipboard.
-        if self.data:
-            self.set_data_to_clipboard(self.data)
-
     def set_clipboard(self):
         """Write QR data captured by the webcam to the clipboard."""
-        super().set_data_to_clipboard(self.data)
+        if self.data:
+            super().set_data_to_clipboard(self.data)
 
 
 if __name__ == "__main__":
@@ -141,7 +140,19 @@ if __name__ == "__main__":
     )
 
     try:
-        WindowsQrScanner()
+        # Initialize the scanner.
+        scanner = WindowsQrScanner()
+        
+        # Start the webcam device.
+        print("Loading webcam...", end=" ")
+        scanner.start_webcam()
+        print("Done.")
+        
+        # Try to read data from the webcam device.
+        scanner.capture_data()
+
+        # If data was captured, set it to the clipboard.
+        scanner.set_data_to_clipboard()
 
     except KeyboardInterrupt:
         print("Exiting scanner...")
